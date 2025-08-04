@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import anthropic
 from anthropic.types import Message as AnthropicMessage
 from dotenv import load_dotenv
@@ -24,6 +25,19 @@ try:
     logger.info("Anthropic client initalized.")
 except Exception as e:
         logger.error(f"Failed to initialize Anthropic client: {e}. Ensure ANTHROPIC_API_KEY is set in your .env file or environment.")
+
+origins = [
+    "http://localhost:3000"
+    # add more urls after deploying or changing local host port
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,       
+    allow_methods=["*"],          
+    allow_headers=["*"],          
+)
         
 @app.get("/")
 def root():
@@ -60,6 +74,6 @@ async def generate_llm_response(request: PromptRequest):
         )
     
     except Exception as e:
-        logger.error(msg=f"Error has occured: {e}")
+        logger.error(msg=f"Error has occured while generating the response: {e}")
 
         raise HTTPException(status_code=500, detail=f"Error generating response: {e}")
