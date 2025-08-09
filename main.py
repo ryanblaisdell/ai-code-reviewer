@@ -3,19 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 import anthropic
 from anthropic.types import Message as AnthropicMessage
 from dotenv import load_dotenv
-from models import PromptRequest, PromptResponse
+from models import PromptRequest, PromptResponse, RegistrationRequest, RegistrationResponse
 import logging as logger
 from utilities import parse_claude_response
+from pymongo import MongoClient
+import os
 
 ### TODO
-
-# make this serve the html pages or create some front end with another framework
-# implement the endpoints that would retrieve the code from the user, possibly add input from the user as well to explain the code
-# get the user input and send the payload to the LLM API
-# ensure that the LLM has prompts being fed to it so that it will return a proper response
-# update the UI with the response from the LLM API calls
-# possibly add functionality to add a notes tab where the user can take notes from the feedback given
-    # if this is the case, then research how easy it is to pertain state with no framework; some state management may be needed for development ease
 
 load_dotenv()
 app = FastAPI()
@@ -48,7 +42,7 @@ async def generate_llm_response(request: PromptRequest):
     """  This POST endpoint will use the API Key to send a request to the Claude endpoint  """
 
     if not request.user_prompt:
-        raise HTTPException(status_code=400, detail="User prompt cannot be empty!")
+        raise HTTPException(status_code=400, detail="User prompt cannot be empty")
     
     try:
         response: AnthropicMessage = client.messages.create(
@@ -77,3 +71,35 @@ async def generate_llm_response(request: PromptRequest):
         logger.error(msg=f"Error has occured while generating the response: {e}")
 
         raise HTTPException(status_code=500, detail=f"Error generating response: {e}")
+    
+@app.post("/register", response_model=RegistrationResponse)
+async def register_user(request: RegistrationRequest):
+    print("Received: ", request)
+
+    if not request.email or not request.password:
+          raise HTTPException(status_code=400, detail="Cannot create user with missing information.")
+
+    mongo_client = MongoClient(os.getenv("MONGO_URI"))
+    db = mongo_client["code_reviewer"]
+    user_collection = db["users"]
+
+    # Check if email already exists
+    existing_user = user_collection.find_one({"email": request.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered.")
+
+    try:
+        result = user_collection.insert_one({
+            "name": request.name,
+            "email": request.email,
+            "password": request.password
+        })
+
+        return RegistrationResponse(
+            id=str(result.inserted_id),
+            name=request.name,
+            email=request.email
+        )
+    
+    except Exception as e:
+         raise HTTPException(status_code=500, detail=f"Failed to create user: {str(e)}")

@@ -12,3 +12,13 @@ class PromptResponse(BaseModel):
     model_used: str
     tokens_generated: int
     input_tokens: int
+
+class RegistrationRequest(BaseModel):
+    name: str | None = None
+    email: str
+    password: str
+
+class RegistrationResponse(BaseModel):
+    id: str
+    email: str
+    name: str | None = None
