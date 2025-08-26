@@ -4,3 +4,5 @@ python-dotenv
 python-multipart
 pymongo
 uvicorn
+pytest
+httpx
